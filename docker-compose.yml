@@ -1,0 +1,71 @@
+version: "3.8"
+
+services:
+
+# Nginx web proxy
+  nginx:
+    image: nginx
+    ports:
+      - "80:80"
+    restart: always
+    build:
+      context: .
+      dockerfile: config/services/nginx/Dockerfile
+    depends_on:
+      - backend
+      - dashboard
+      - frontend
+    links:
+      - backend:backend
+      - dashboard:dashboard
+      - frontend:frontend
+    networks:
+      - some_network
+
+# Postgresql Main database
+  database:
+    image: postgres
+    volumes:
+      - ./apps_storage/postgresql:/var/lib/postgresql
+    env_file:
+      - config/services/postgresql/conf.env
+    ports:
+      - "5432:5432"
+    networks:
+      - some_network
+
+# Django backend
+  backend:
+    build:
+      context: .
+      dockerfile: config/backend/Dockerfile
+    command: uvicorn --host 0.0.0.0 src.asgi:application
+    depends_on:
+      - database
+    links:
+      - database:database
+    networks:
+      - some_network
+
+# NextJS Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: config/dashboard/Dockerfile
+    depends_on:
+      - backend
+    networks:
+      - some_network
+
+# NextJS Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: config/frontend/Dockerfile
+    depends_on:
+      - backend
+    networks:
+      - some_network
+
+networks:
+  some_network:
